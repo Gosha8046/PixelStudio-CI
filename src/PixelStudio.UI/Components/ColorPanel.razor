@@ -1,0 +1,81 @@
+<section class="ps-panel" aria-labelledby="color-title">
+  <h2 id="color-title" class="ps-panel-title">Цвет</h2>
+  <div class="ps-color-row">
+    <div class="ps-swatch-big ps-checker" title="Основной цвет: @Color.ToHex()">
+      <span style="background: @Css(Color)" data-testid="primary-swatch"></span>
+    </div>
+    <div class="ps-color-fields">
+      <label class="ps-field">
+        <span>RGB</span>
+        <input type="color" value="@RgbHex(Color)" data-testid="color-picker" @oninput="OnRgbInput" title="Выбрать цвет" />
+      </label>
+      <label class="ps-field">
+        <span>HEX</span>
+        <input type="text" class="ps-input ps-hex" value="@Color.ToHexRgba()" maxlength="9" spellcheck="false"
+               data-testid="color-hex" title="#RRGGBB или #RRGGBBAA" @onchange="OnHexChange" />
+      </label>
+    </div>
+  </div>
+  <label class="ps-field ps-field-wide" title="Альфа-канал основного цвета: 0 — прозрачный, 255 — непрозрачный">
+    <span>Альфа</span>
+    <input type="range" min="0" max="255" value="@Color.A" data-testid="color-alpha" @oninput="OnAlphaInput" />
+    <output>@Color.A</output>
+  </label>
+
+  <div class="ps-palette" role="listbox" aria-label="Палитра" data-testid="palette">
+    @for (int i = 0; i < State.Document.Palette.Colors.Count; i++)
+    {
+      var c = State.Document.Palette.Colors[i];
+      var selected = c == Color;
+      <button class="ps-palette-swatch ps-checker @(selected ? "is-active" : null)" role="option" aria-selected="@(selected ? "true" : "false")"
+              title="@c.ToHex()" data-testid="palette-@i" @onclick="() => State.SetPrimaryColor(c)">
+        <span style="background: @Css(c)"></span>
+      </button>
+    }
+  </div>
+  <div class="ps-row">
+    <button class="ps-btn ps-btn-small" title="Добавить основной цвет в палитру" @onclick="State.AddCurrentColorToPalette"><Icon Name="plus" /> В палитру</button>
+    <button class="ps-btn ps-btn-small" title="Удалить основной цвет из палитры" disabled="@(!State.Document.Palette.Colors.Contains(Color))"
+            @onclick="State.RemoveCurrentColorFromPalette"><Icon Name="trash" /> Из палитры</button>
+  </div>
+</section>
+
+@code {
+    [Parameter, EditorRequired] public EditorState State { get; set; } = default!;
+
+    private Color32 Color => State.Tools.PrimaryColor;
+
+    private static string RgbHex(Color32 c) => $"#{c.R:X2}{c.G:X2}{c.B:X2}";
+
+    private static string Css(Color32 c) =>
+        string.Create(CultureInfo.InvariantCulture, $"rgba({c.R},{c.G},{c.B},{c.A / 255.0:0.###})");
+
+    private void OnRgbInput(ChangeEventArgs e)
+    {
+        if (Color32.TryParseHex(e.Value as string, out var rgb))
+        {
+            // A fully transparent color would make the pencil invisible: picking RGB restores opacity.
+            State.SetPrimaryColor(rgb.WithAlpha(Color.A == 0 ? (byte)255 : Color.A));
+        }
+    }
+
+    private void OnHexChange(ChangeEventArgs e)
+    {
+        if (Color32.TryParseHex(e.Value as string, out var color))
+        {
+            State.SetPrimaryColor(color);
+        }
+        else
+        {
+            State.SetPrimaryColor(Color); // re-render restores the previous valid value
+        }
+    }
+
+    private void OnAlphaInput(ChangeEventArgs e)
+    {
+        if (byte.TryParse(e.Value as string, out var alpha))
+        {
+            State.SetPrimaryColor(Color.WithAlpha(alpha));
+        }
+    }
+}

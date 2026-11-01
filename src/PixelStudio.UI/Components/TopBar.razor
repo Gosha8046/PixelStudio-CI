@@ -1,0 +1,54 @@
+<header class="ps-topbar">
+  <div class="ps-brand" title="PixelStudio CI — @State.PlatformName">
+    <img class="ps-logo" src="_content/PixelStudio.UI/logo.svg" alt="" width="20" height="20" />
+    <span>PixelStudio <b>CI</b></span>
+  </div>
+
+  <nav class="ps-group" aria-label="Файл">
+    <button class="ps-btn" data-testid="btn-new" title="Новый проект" @onclick="State.RequestNewAsync"><Icon Name="new" /><span>Новый</span></button>
+    <button class="ps-btn" data-testid="btn-open" title="Открыть проект (@KeyMap.Hint(AppCommand.Open))" @onclick="State.OpenAsync"><Icon Name="open" /><span>Открыть</span></button>
+    <button class="ps-btn" data-testid="btn-save"
+            title="@(State.SavesToDownloads ? "Сохранить проект — файл .pxstudio будет скачан" : "Сохранить проект") (@KeyMap.Hint(AppCommand.Save))"
+            @onclick="() => State.SaveAsync()"><Icon Name="save" /><span>Сохранить</span></button>
+    @if (!State.SavesToDownloads)
+    {
+      <button class="ps-btn" data-testid="btn-save-as" title="Сохранить как…" @onclick="() => State.SaveAsync(saveAs: true)"><span>Сохранить как…</span></button>
+    }
+    <button class="ps-btn ps-btn-accent" data-testid="btn-export" title="Экспорт PNG / спрайтшита (@KeyMap.Hint(AppCommand.Export))"
+            @onclick="() => State.OpenDialog(DialogKind.Export)"><Icon Name="export" /><span>Экспорт</span></button>
+  </nav>
+
+  <div class="ps-group" aria-label="История">
+    <button class="ps-btn ps-icon-btn" data-testid="btn-undo" disabled="@(!State.Document.History.CanUndo)"
+            title="Отменить@(Label(State.Document.History.UndoLabel)) (@KeyMap.Hint(AppCommand.Undo))" @onclick="State.Undo"><Icon Name="undo" /></button>
+    <button class="ps-btn ps-icon-btn" data-testid="btn-redo" disabled="@(!State.Document.History.CanRedo)"
+            title="Повторить@(Label(State.Document.History.RedoLabel)) (@KeyMap.Hint(AppCommand.Redo))" @onclick="State.Redo"><Icon Name="redo" /></button>
+  </div>
+
+  <div class="ps-group" aria-label="Вид">
+    <button class="ps-btn ps-toggle" aria-pressed="@Pressed(State.ShowGrid)" data-testid="toggle-grid"
+            title="Пиксельная сетка (@KeyMap.Hint(AppCommand.ToggleGrid))" @onclick="() => State.SetShowGrid(!State.ShowGrid)"><Icon Name="grid" /><span>Сетка</span></button>
+    <button class="ps-btn ps-toggle" aria-pressed="@Pressed(State.ShowCrosshair)" data-testid="toggle-crosshair"
+            title="Перекрестие по пикселю (@KeyMap.Hint(AppCommand.ToggleCrosshair))" @onclick="() => State.SetShowCrosshair(!State.ShowCrosshair)"><Icon Name="crosshair" /><span>Перекрестие</span></button>
+    <button class="ps-btn ps-icon-btn" title="Уменьшить (@KeyMap.Hint(AppCommand.ZoomOut))" @onclick="() => State.RequestView(ViewCommand.ZoomOut)"><Icon Name="zoom-out" /></button>
+    <span class="ps-zoom" data-testid="zoom-label" title="Масштаб (колесо мыши)">@(State.Zoom)×</span>
+    <button class="ps-btn ps-icon-btn" title="Увеличить (@KeyMap.Hint(AppCommand.ZoomIn))" @onclick="() => State.RequestView(ViewCommand.ZoomIn)"><Icon Name="zoom-in" /></button>
+    <button class="ps-btn ps-icon-btn" title="Вписать в окно (@KeyMap.Hint(AppCommand.ZoomFit))" @onclick="() => State.RequestView(ViewCommand.Fit)"><Icon Name="fit" /></button>
+  </div>
+
+  <div class="ps-docname" data-testid="doc-name" title="@(State.IsDirty ? "Есть несохранённые изменения" : "Все изменения сохранены")">
+    @State.DocumentName<span class="ps-dims">@State.Document.Width×@State.Document.Height</span>
+    @if (State.IsDirty)
+    {
+      <span class="ps-dirty" data-testid="dirty-indicator">● не сохранено</span>
+    }
+  </div>
+</header>
+
+@code {
+    [Parameter, EditorRequired] public EditorState State { get; set; } = default!;
+
+    private static string Pressed(bool value) => value ? "true" : "false";
+
+    private static string Label(string? label) => label is null ? string.Empty : $": {label}";
+}

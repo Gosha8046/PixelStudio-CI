@@ -1,0 +1,37 @@
+@implements IDisposable
+@inject EditorState State
+
+<div class="ps-app" data-testid="editor">
+  <TopBar State="State" />
+  <ToolPanel State="State" />
+  <main class="ps-center">
+    <Stage State="State" />
+  </main>
+  <aside class="ps-right">
+    <ColorPanel State="State" />
+    <LayersPanel State="State" />
+    <TilePreviewPanel State="State" />
+  </aside>
+  <TimelinePanel State="State" />
+
+  @switch (State.Dialog)
+  {
+    case DialogKind.NewProject:
+      <NewProjectDialog State="State" />
+      break;
+    case DialogKind.Export:
+      <ExportDialog State="State" />
+      break;
+    case DialogKind.ConfirmDiscard:
+      <ConfirmDialog State="State" />
+      break;
+  }
+</div>
+
+@code {
+    protected override void OnInitialized() => State.Changed += OnStateChanged;
+
+    private void OnStateChanged() => _ = InvokeAsync(StateHasChanged);
+
+    public void Dispose() => State.Changed -= OnStateChanged;
+}

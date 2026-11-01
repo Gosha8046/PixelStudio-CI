@@ -1,0 +1,33 @@
+<Project Sdk="Microsoft.NET.Sdk.Razor">
+
+  <!--
+    Windows desktop host: WinForms window with BlazorWebView. C# (Core + UI) runs natively on
+    .NET (no WebAssembly); the same Razor UI is rendered by the WebView2 runtime (Chromium Edge).
+    Files use native Open/Save dialogs. Builds on Linux/macOS too (EnableWindowsTargeting),
+    but runs only on Windows 10/11 with the WebView2 Runtime.
+  -->
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <UseWindowsForms>true</UseWindowsForms>
+    <EnableWindowsTargeting>true</EnableWindowsTargeting>
+    <RootNamespace>PixelStudio.Windows</RootNamespace>
+    <AssemblyName>PixelStudio</AssemblyName>
+    <ApplicationIcon>app.ico</ApplicationIcon>
+    <ApplicationHighDpiMode>PerMonitorV2</ApplicationHighDpiMode>
+    <!--
+      Microsoft.Web.WebView2 ships WinForms and WPF wrappers; the unused WPF one references
+      WindowsBase and triggers a harmless reference-conflict warning (MSB3277).
+    -->
+    <MSBuildWarningsAsMessages>$(MSBuildWarningsAsMessages);MSB3277</MSBuildWarningsAsMessages>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Components.WebView.WindowsForms" Version="10.0.120" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\PixelStudio.UI\PixelStudio.UI.csproj" />
+  </ItemGroup>
+
+</Project>

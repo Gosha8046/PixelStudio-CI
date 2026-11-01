@@ -1,0 +1,37 @@
+<nav class="ps-tools" aria-label="Инструменты">
+  @foreach (var tool in Tools)
+  {
+    var active = State.Tools.Tool == tool.Kind;
+    <button class="ps-tool @(active ? "is-active" : null)" aria-pressed="@(active ? "true" : "false")"
+            data-testid="tool-@tool.Kind.ToString().ToLowerInvariant()"
+            title="@tool.Label (@KeyMap.Hint(tool.Command)) — @tool.Help"
+            @onclick="() => State.SetTool(tool.Kind)">
+      <Icon Name="@tool.Icon" Size="20" />
+      <span class="ps-tool-label">@tool.Label</span>
+      <kbd>@KeyMap.Hint(tool.Command)</kbd>
+    </button>
+  }
+
+  @if (State.Tools.Tool == ToolKind.Eyedropper)
+  {
+    <label class="ps-tool-option" title="Брать цвет из всех видимых слоёв или только из активного">
+      <input type="checkbox" checked="@State.Tools.SampleMergedLayers" @onchange="e => State.SetSampleMerged((bool)e.Value!)" />
+      Все слои
+    </label>
+  }
+</nav>
+
+@code {
+    [Parameter, EditorRequired] public EditorState State { get; set; } = default!;
+
+    private sealed record ToolInfo(ToolKind Kind, string Icon, string Label, AppCommand Command, string Help);
+
+    private static readonly ToolInfo[] Tools =
+    [
+        new(ToolKind.Pencil, "pencil", "Карандаш", AppCommand.ToolPencil, "рисует основным цветом, непрерывная линия"),
+        new(ToolKind.Eraser, "eraser", "Ластик", AppCommand.ToolEraser, "делает пиксели прозрачными"),
+        new(ToolKind.Fill, "fill", "Заливка", AppCommand.ToolFill, "заливает связную область одного цвета"),
+        new(ToolKind.Eyedropper, "eyedropper", "Пипетка", AppCommand.ToolEyedropper, "берёт цвет пикселя"),
+        new(ToolKind.Hand, "hand", "Рука", AppCommand.ToolHand, "перемещает холст (также пробел или средняя кнопка)"),
+    ];
+}

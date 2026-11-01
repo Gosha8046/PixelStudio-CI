@@ -1,0 +1,18 @@
+@* Simple accessible modal shell; Escape is routed through EditorState (shortcut "Escape"). *@
+<div class="ps-modal-backdrop" @onclick="OnBackdrop">
+  <div class="ps-modal" role="dialog" aria-modal="true" aria-labelledby="modal-title" data-testid="@TestId" @onclick:stopPropagation="true">
+    <h2 id="modal-title" class="ps-modal-title">@Title</h2>
+    <div class="ps-modal-body">@ChildContent</div>
+    <div class="ps-modal-actions">@Actions</div>
+  </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public string Title { get; set; } = "";
+    [Parameter] public string? TestId { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public RenderFragment? Actions { get; set; }
+    [Parameter] public EventCallback OnDismiss { get; set; }
+
+    private Task OnBackdrop() => OnDismiss.InvokeAsync();
+}

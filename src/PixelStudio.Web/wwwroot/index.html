@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="ru">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="PixelStudio CI — пиксельный редактор спрайтов, тайлов и покадровой анимации в браузере." />
+  <title>PixelStudio CI</title>
+  <!-- The Pages workflow rewrites this to /<repository>/ (see .github/workflows/pages.yml). -->
+  <base href="/" />
+  <link rel="preload" id="webassembly" />
+  <link rel="icon" type="image/svg+xml" href="favicon.svg" />
+  <link rel="stylesheet" href="_content/PixelStudio.UI/pixelstudio.css" />
+  <script type="importmap"></script>
+</head>
+
+<body>
+  <div id="app">
+    <div class="ps-loading">
+      <div>Загрузка PixelStudio CI…</div>
+      <div class="ps-loading-bar"></div>
+      <noscript>Для работы редактора нужен JavaScript и WebAssembly.</noscript>
+    </div>
+  </div>
+
+  <div id="blazor-error-ui">
+    Произошла непредвиденная ошибка. Несохранённые изменения могут быть потеряны.
+    <a href="." class="reload">Перезагрузить</a>
+    <span class="dismiss">🗙</span>
+  </div>
+  <script src="_framework/blazor.webassembly#[.{fingerprint}].js"></script>
+</body>
+
+</html>

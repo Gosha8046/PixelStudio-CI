@@ -1,0 +1,43 @@
+<Modal Title="Новый проект" TestId="dialog-new" OnDismiss="State.CloseDialog">
+  <ChildContent>
+    <p class="ps-hint">Размер холста фиксируется для всех слоёв и кадров. Допустимо от @DocumentLimits.MinSize до @DocumentLimits.MaxSize px по каждой стороне.</p>
+    <div class="ps-presets">
+      @foreach (var size in DocumentLimits.PresetSizes)
+      {
+        <button class="ps-btn ps-preset @(_width == size && _height == size ? "is-active" : null)" data-testid="preset-@size"
+                @onclick="() => { _width = size; _height = size; }">@size × @size</button>
+      }
+    </div>
+    <div class="ps-row">
+      <label class="ps-field">
+        <span>Ширина</span>
+        <input type="number" class="ps-input ps-num" min="@DocumentLimits.MinSize" max="@DocumentLimits.MaxSize" data-testid="new-width"
+               value="@_width" @onchange="e => _width = Parse(e)" />
+      </label>
+      <label class="ps-field">
+        <span>Высота</span>
+        <input type="number" class="ps-input ps-num" min="@DocumentLimits.MinSize" max="@DocumentLimits.MaxSize" data-testid="new-height"
+               value="@_height" @onchange="e => _height = Parse(e)" />
+      </label>
+    </div>
+    @if (!Valid)
+    {
+      <p class="ps-error" role="alert">Размер должен быть от @DocumentLimits.MinSize до @DocumentLimits.MaxSize px.</p>
+    }
+  </ChildContent>
+  <Actions>
+    <button class="ps-btn" @onclick="State.CloseDialog">Отмена</button>
+    <button class="ps-btn ps-btn-accent" data-testid="new-create" disabled="@(!Valid)" @onclick="() => State.CreateDocument(_width, _height)">Создать</button>
+  </Actions>
+</Modal>
+
+@code {
+    [Parameter, EditorRequired] public EditorState State { get; set; } = default!;
+
+    private int _width = 32;
+    private int _height = 32;
+
+    private bool Valid => DocumentLimits.IsValidSize(_width, _height);
+
+    private static int Parse(ChangeEventArgs e) => int.TryParse(e.Value as string, out var v) ? v : 0;
+}

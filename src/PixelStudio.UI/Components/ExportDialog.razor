@@ -1,0 +1,79 @@
+@using PixelStudio.Core.IO
+
+<Modal Title="Экспорт" TestId="dialog-export" OnDismiss="State.CloseDialog">
+  <ChildContent>
+    <p class="ps-hint">
+      В экспорт попадают только видимые слои документа. Сетка, перекрестие, Onion Skinning и Tile Preview — элементы просмотра и не экспортируются.
+      @if (State.SavesToDownloads)
+      {
+        <br />@("Файлы будут скачаны браузером; для пары PNG + JSON браузер может спросить разрешение на несколько загрузок.")
+      }
+    </p>
+
+    <h3 class="ps-subtitle">Текущий кадр</h3>
+    <div class="ps-row">
+      <span>Кадр @(State.CurrentFrameIndex + 1), @State.Document.Width×@State.Document.Height, PNG с прозрачностью</span>
+      <button class="ps-btn" data-testid="export-frame" @onclick="State.ExportCurrentFrameAsync"><Icon Name="export" /> PNG кадра</button>
+    </div>
+
+    <h3 class="ps-subtitle">Спрайтшит всех кадров + JSON</h3>
+    <div class="ps-row">
+      <label class="ps-field">
+        <span>Имя файла</span>
+        <input type="text" class="ps-input" value="@_baseName" data-testid="export-name" @oninput="e => _baseName = e.Value as string ?? string.Empty" />
+      </label>
+      <label class="ps-field" title="Число столбцов сетки (не больше числа кадров)">
+        <span>Столбцы</span>
+        <input type="number" class="ps-input ps-num" min="1" max="@State.Document.Frames.Count" value="@_columns" data-testid="export-columns"
+               @oninput="e => _columns = Parse(e, _columns)" />
+      </label>
+      <label class="ps-field" title="Прозрачный отступ между соседними кадрами, px">
+        <span>Отступ, px</span>
+        <input type="number" class="ps-input ps-num" min="0" max="@SpriteSheetLayout.MaxSpacing" value="@_spacing" data-testid="export-spacing"
+               @oninput="e => _spacing = Parse(e, _spacing)" />
+      </label>
+    </div>
+    <p class="ps-hint" data-testid="export-summary">@Summary</p>
+  </ChildContent>
+  <Actions>
+    <button class="ps-btn" @onclick="State.CloseDialog">Закрыть</button>
+    <button class="ps-btn ps-btn-accent" data-testid="export-sheet" disabled="@(_layoutError is not null)"
+            @onclick="() => State.ExportSpriteSheetAsync(_columns, _spacing, _baseName)"><Icon Name="export" /> PNG + JSON</button>
+  </Actions>
+</Modal>
+
+@code {
+    [Parameter, EditorRequired] public EditorState State { get; set; } = default!;
+
+    private string _baseName = "";
+    private int _columns;
+    private int _spacing;
+    private string? _layoutError;
+
+    protected override void OnInitialized()
+    {
+        _baseName = State.FileStem;
+        _columns = Math.Min(State.Document.Frames.Count, 8);
+    }
+
+    private string Summary
+    {
+        get
+        {
+            try
+            {
+                var layout = SpriteSheetLayout.Create(State.Document.Frames.Count, State.Document.Width, State.Document.Height, _columns, _spacing);
+                _layoutError = null;
+                var png = Exporter.NormalizeImageFileName(_baseName);
+                return $"{png} + {Path.ChangeExtension(png, ".json")}: атлас {layout.AtlasWidth}×{layout.AtlasHeight} px, {layout.Columns}×{layout.Rows} ячеек, {State.Document.Frames.Count} кадр., {State.Document.Timeline.TotalDurationMs} мс.";
+            }
+            catch (Exception ex) when (ex is InvalidOperationException or ArgumentException)
+            {
+                _layoutError = ex.Message;
+                return ex.Message;
+            }
+        }
+    }
+
+    private static int Parse(ChangeEventArgs e, int fallback) => int.TryParse(e.Value as string, out var v) ? v : fallback;
+}

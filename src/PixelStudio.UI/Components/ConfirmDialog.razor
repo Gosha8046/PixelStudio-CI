@@ -1,0 +1,14 @@
+<Modal Title="Несохранённые изменения" TestId="dialog-confirm" OnDismiss="() => State.ResolveConfirmAsync(ConfirmChoice.Cancel)">
+  <ChildContent>
+    <p>В проекте «@State.DocumentName» есть несохранённые изменения. Сохранить их перед продолжением?</p>
+  </ChildContent>
+  <Actions>
+    <button class="ps-btn" data-testid="confirm-cancel" @onclick="() => State.ResolveConfirmAsync(ConfirmChoice.Cancel)">Отмена</button>
+    <button class="ps-btn" data-testid="confirm-discard" @onclick="() => State.ResolveConfirmAsync(ConfirmChoice.Discard)">Не сохранять</button>
+    <button class="ps-btn ps-btn-accent" data-testid="confirm-save" @onclick="() => State.ResolveConfirmAsync(ConfirmChoice.Save)">Сохранить</button>
+  </Actions>
+</Modal>
+
+@code {
+    [Parameter, EditorRequired] public EditorState State { get; set; } = default!;
+}

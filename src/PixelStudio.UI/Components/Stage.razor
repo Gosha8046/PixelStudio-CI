@@ -1,0 +1,178 @@
+@implements IAsyncDisposable
+@inject EditorInterop Interop
+@using PixelStudio.Core.Rendering
+
+<div class="ps-stage" id="ps-stage" tabindex="-1" data-testid="stage">
+  <div class="ps-canvas-host" id="ps-canvas-host">
+    <canvas id="ps-main" class="ps-pixel-canvas" data-testid="main-canvas"></canvas>
+  </div>
+  <canvas id="ps-overlay" class="ps-overlay" aria-hidden="true"></canvas>
+  @if (State.IsPlaying)
+  {
+    <div class="ps-badge">▶ Воспроизведение — нажмите P или кликните по холсту, чтобы остановить</div>
+  }
+</div>
+
+<footer class="ps-statusbar" data-testid="statusbar">
+  <span id="ps-coords" class="ps-coords" title="Пиксель под курсором">—</span>
+  <span title="Активный слой">Слой: <b>@State.CurrentLayer.Name</b></span>
+  <span title="Текущий кадр">Кадр @(State.CurrentFrameIndex + 1)/@State.Document.Frames.Count</span>
+  @if (State.Status is not null)
+  {
+    <span class="ps-status is-@State.StatusKind.ToString().ToLowerInvariant()" data-testid="status" role="status">
+      @State.Status
+      <button class="ps-status-close" title="Скрыть" @onclick="State.ClearStatus">×</button>
+    </span>
+  }
+</footer>
+
+@code {
+    [Parameter, EditorRequired] public EditorState State { get; set; } = default!;
+
+    private readonly ViewRenderer _renderer = new();
+    private DotNetObjectReference<Stage>? _selfRef;
+    private IJSObjectReference? _module;
+    private int _syncedGeneration = -1;
+    private bool _presentQueued;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            _module = await Interop.GetModuleAsync();
+            _selfRef = DotNetObjectReference.Create(this);
+            await _module.InvokeVoidAsync("initEditor", _selfRef, KeyMap.AllCombos);
+            State.CanvasInvalidated += QueuePresent;
+            State.ViewOptionsChanged += OnViewOptionsChanged;
+            State.ViewCommandRequested += OnViewCommand;
+        }
+
+        if (_module is not null && _syncedGeneration != State.DocumentGeneration)
+        {
+            _syncedGeneration = State.DocumentGeneration;
+            await _module.InvokeVoidAsync("setDocument", State.Document.Width, State.Document.Height);
+            await PushOptionsAsync();
+            await PresentAsync();
+        }
+    }
+
+    /// <summary>Pointer events from JS as a flat array: [type, x, y, type, x, y, ...].</summary>
+    [JSInvokable]
+    public async Task OnPointerBatch(int[] batch)
+    {
+        for (int i = 0; i + 2 < batch.Length; i += 3)
+        {
+            State.HandlePointer(batch[i], batch[i + 1], batch[i + 2]);
+        }
+
+        var changed = State.Tools.TakeChangedRect();
+        if (!changed.IsEmpty)
+        {
+            await PresentRegionAsync(changed);
+        }
+    }
+
+    /// <summary>
+    /// Incremental present while drawing: recomposites and uploads only the changed rectangle
+    /// (cost ∝ stroke area, not canvas area). Falls back to a full present when the cache is cold.
+    /// </summary>
+    private async Task PresentRegionAsync(PixelRect region)
+    {
+        var doc = State.Document;
+        if (_module is null || !_renderer.CanRenderRegion(doc, State.CurrentFrameIndex))
+        {
+            await PresentAsync();
+            return;
+        }
+
+        var r = _renderer.RenderRegion(doc, State.CurrentFrameIndex, region);
+        if (r.IsEmpty)
+        {
+            return;
+        }
+
+        await _module.InvokeVoidAsync("presentRegion", _renderer.ViewBytes, doc.Width, doc.Height, r.X, r.Y, r.Width, r.Height);
+        if (State.ShowTilePreview)
+        {
+            await _module.InvokeVoidAsync("presentTile", _renderer.CompositeBytes, doc.Width, doc.Height);
+        }
+    }
+
+    [JSInvokable]
+    public Task OnShortcut(string combo) => State.ExecuteShortcutAsync(combo);
+
+    [JSInvokable]
+    public void OnZoomChanged(int zoom) => State.ReportZoom(zoom);
+
+    private async Task PresentAsync()
+    {
+        if (_module is null)
+        {
+            return;
+        }
+
+        var doc = State.Document;
+        _renderer.Render(doc, State.CurrentFrameIndex, State.Onion);
+        await _module.InvokeVoidAsync("present", _renderer.ViewBytes, doc.Width, doc.Height);
+        if (State.ShowTilePreview)
+        {
+            await _module.InvokeVoidAsync("presentTile", _renderer.CompositeBytes, doc.Width, doc.Height);
+        }
+    }
+
+    /// <summary>Coalesces bursts of invalidations (e.g. several events in one handler) into one present.</summary>
+    private async void QueuePresent()
+    {
+        if (_presentQueued)
+        {
+            return;
+        }
+
+        _presentQueued = true;
+        try
+        {
+            await Task.Yield();
+            _presentQueued = false;
+            await InvokeAsync(PresentAsync);
+        }
+        catch (JSDisconnectedException)
+        {
+            // Window closing.
+        }
+        catch (ObjectDisposedException)
+        {
+        }
+    }
+
+    private void OnViewOptionsChanged() => _ = InvokeAsync(PushOptionsAsync);
+
+    private Task PushOptionsAsync() =>
+        _module is null
+            ? Task.CompletedTask
+            // Primitive arguments only: no reflection-based serialization (trimming-safe).
+            : _module.InvokeVoidAsync("setOptions", State.ShowGrid, State.ShowCrosshair, State.Tools.Tool.ToString()).AsTask();
+
+    private void OnViewCommand(ViewCommand command) => _ = InvokeAsync(async () =>
+    {
+        if (_module is null)
+        {
+            return;
+        }
+
+        switch (command)
+        {
+            case ViewCommand.ZoomIn: await _module.InvokeVoidAsync("zoomStep", 1); break;
+            case ViewCommand.ZoomOut: await _module.InvokeVoidAsync("zoomStep", -1); break;
+            default: await _module.InvokeVoidAsync("fit"); break;
+        }
+    });
+
+    public ValueTask DisposeAsync()
+    {
+        State.CanvasInvalidated -= QueuePresent;
+        State.ViewOptionsChanged -= OnViewOptionsChanged;
+        State.ViewCommandRequested -= OnViewCommand;
+        _selfRef?.Dispose();
+        return ValueTask.CompletedTask;
+    }
+}

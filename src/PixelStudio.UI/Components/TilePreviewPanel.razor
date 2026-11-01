@@ -1,0 +1,33 @@
+<section class="ps-panel" aria-labelledby="tile-title">
+  <h2 id="tile-title" class="ps-panel-title">
+    <label class="ps-check" title="Повторяет текущий кадр сеткой 3×3 для проверки бесшовности (@KeyMap.Hint(AppCommand.ToggleTilePreview))">
+      <input type="checkbox" checked="@State.ShowTilePreview" data-testid="toggle-tile"
+             @onchange="e => State.SetShowTilePreview((bool)e.Value!)" />
+      Tile Preview 3×3
+    </label>
+  </h2>
+  @if (State.ShowTilePreview)
+  {
+    <div class="ps-tile-wrap ps-checker">
+      <canvas id="ps-tile" class="ps-tile" width="@(State.Document.Width * 3)" height="@(State.Document.Height * 3)" data-testid="tile-canvas"></canvas>
+    </div>
+    <p class="ps-hint">Режим просмотра: обновляется при рисовании. Рисование через границы тайла — будущая функция.</p>
+  }
+</section>
+
+@code {
+    [Parameter, EditorRequired] public EditorState State { get; set; } = default!;
+
+    private bool _wasVisible;
+
+    protected override void OnAfterRender(bool firstRender)
+    {
+        // The canvas element is created on toggle; ask the stage to present into it.
+        if (State.ShowTilePreview && !_wasVisible)
+        {
+            State.SetShowTilePreview(true);
+        }
+
+        _wasVisible = State.ShowTilePreview;
+    }
+}

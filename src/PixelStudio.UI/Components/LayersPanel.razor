@@ -1,0 +1,137 @@
+@inject EditorInterop Interop
+
+<section class="ps-panel ps-layers" aria-labelledby="layers-title">
+  <h2 id="layers-title" class="ps-panel-title">Слои <small>(сверху — верхний)</small></h2>
+  <ul class="ps-layer-list" role="listbox" aria-label="Слои" data-testid="layer-list">
+    @for (int i = State.Document.Layers.Count - 1; i >= 0; i--)
+    {
+      var layer = State.Document.Layers[i];
+      var selected = layer.Id == State.CurrentLayerId;
+      <li class="ps-layer @(selected ? "is-active" : null) @(layer.Visible ? null : "is-hidden")" role="option"
+          aria-selected="@(selected ? "true" : "false")" data-testid="layer-row" data-layer-id="@layer.Id"
+          @onclick="() => State.SelectLayer(layer.Id)">
+        <button class="ps-eye" title="@(layer.Visible ? "Скрыть слой" : "Показать слой")" data-testid="layer-visibility"
+                aria-pressed="@(layer.Visible ? "true" : "false")"
+                @onclick="() => State.SetLayerVisible(layer.Id, !layer.Visible)" @onclick:stopPropagation="true">
+          <Icon Name="@(layer.Visible ? "eye" : "eye-off")" />
+        </button>
+        @if (_renamingId == layer.Id)
+        {
+          <input id="ps-rename-input" class="ps-input ps-rename" value="@_renameText" maxlength="@DocumentLimits.MaxNameLength"
+                 data-testid="layer-rename-input" aria-label="Имя слоя"
+                 @oninput="e => _renameText = e.Value as string ?? string.Empty"
+                 @onkeydown="OnRenameKey" @onblur="CommitRename" @onclick:stopPropagation="true" />
+        }
+        else
+        {
+          <span class="ps-layer-name" title="Двойной щелчок — переименовать" data-testid="layer-name"
+                @ondblclick="() => BeginRename(layer)">@layer.Name</span>
+        }
+        <span class="ps-layer-meta">@ModeShort(layer.BlendMode) · @(layer.Opacity)%</span>
+      </li>
+    }
+  </ul>
+
+  <div class="ps-row ps-row-icons">
+    <button class="ps-btn ps-icon-btn" data-testid="layer-add" title="Новый слой над текущим" @onclick="State.AddLayer"><Icon Name="plus" /></button>
+    <button class="ps-btn ps-icon-btn" data-testid="layer-duplicate" title="Дублировать слой (во всех кадрах)" @onclick="State.DuplicateLayer"><Icon Name="copy" /></button>
+    <button class="ps-btn ps-icon-btn" data-testid="layer-delete" title="Удалить слой" disabled="@(State.Document.Layers.Count <= 1)" @onclick="State.DeleteLayer"><Icon Name="trash" /></button>
+    <button class="ps-btn ps-icon-btn" data-testid="layer-up" title="Поднять слой" disabled="@(CurrentIndex >= State.Document.Layers.Count - 1)" @onclick="() => State.MoveLayer(1)"><Icon Name="up" /></button>
+    <button class="ps-btn ps-icon-btn" data-testid="layer-down" title="Опустить слой" disabled="@(CurrentIndex <= 0)" @onclick="() => State.MoveLayer(-1)"><Icon Name="down" /></button>
+    <button class="ps-btn ps-icon-btn" data-testid="layer-merge" title="Объединить с нижним (оба слоя должны быть видимы)"
+            disabled="@(!State.Document.Layers.CanMergeDown(State.CurrentLayerId))" @onclick="State.MergeDown"><Icon Name="merge" /></button>
+  </div>
+
+  <div class="ps-props" aria-label="Свойства слоя">
+    <label class="ps-field ps-field-wide">
+      <span>Имя</span>
+      <input type="text" class="ps-input" value="@State.CurrentLayer.Name" maxlength="@DocumentLimits.MaxNameLength" data-testid="layer-name-input"
+             @onchange="e => State.RenameLayer(State.CurrentLayerId, e.Value as string ?? string.Empty)" />
+    </label>
+    <label class="ps-field ps-field-wide" title="Непрозрачность слоя">
+      <span>Непрозр.</span>
+      <input type="range" min="0" max="100" value="@State.CurrentLayer.Opacity" data-testid="layer-opacity"
+             @oninput="OnOpacityInput" @onchange="_ => State.EndContinuousEdit()" />
+      <output>@(State.CurrentLayer.Opacity)%</output>
+    </label>
+    <label class="ps-field ps-field-wide" title="Режим смешивания с нижележащими слоями">
+      <span>Режим</span>
+      <select class="ps-input" data-testid="layer-blend" value="@State.CurrentLayer.BlendMode" @onchange="OnBlendChange">
+        <option value="@BlendMode.Normal">Обычный (Normal)</option>
+        <option value="@BlendMode.Multiply">Умножение (Multiply)</option>
+        <option value="@BlendMode.Screen">Экран (Screen)</option>
+      </select>
+    </label>
+  </div>
+</section>
+
+@code {
+    [Parameter, EditorRequired] public EditorState State { get; set; } = default!;
+
+    private int? _renamingId;
+    private string _renameText = string.Empty;
+    private bool _focusRename;
+
+    private int CurrentIndex => State.Document.IndexOfLayer(State.CurrentLayerId);
+
+    private static string ModeShort(BlendMode mode) => mode switch
+    {
+        BlendMode.Multiply => "Умнож.",
+        BlendMode.Screen => "Экран",
+        _ => "Обычн.",
+    };
+
+    private void BeginRename(Layer layer)
+    {
+        _renamingId = layer.Id;
+        _renameText = layer.Name;
+        _focusRename = true;
+    }
+
+    private void CommitRename()
+    {
+        if (_renamingId is int id)
+        {
+            _renamingId = null;
+            State.RenameLayer(id, _renameText);
+        }
+    }
+
+    private void OnRenameKey(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+        {
+            CommitRename();
+        }
+        else if (e.Key == "Escape")
+        {
+            _renamingId = null;
+        }
+    }
+
+    private void OnOpacityInput(ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value as string, out var value))
+        {
+            State.SetLayerOpacity(State.CurrentLayerId, value);
+        }
+    }
+
+    private void OnBlendChange(ChangeEventArgs e)
+    {
+        if (Enum.TryParse<BlendMode>(e.Value as string, out var mode))
+        {
+            State.SetLayerBlendMode(State.CurrentLayerId, mode);
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (_focusRename)
+        {
+            _focusRename = false;
+            var module = await Interop.GetModuleAsync();
+            await module.InvokeVoidAsync("focusElement", "ps-rename-input");
+        }
+    }
+}

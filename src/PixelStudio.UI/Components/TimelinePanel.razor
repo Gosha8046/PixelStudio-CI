@@ -1,0 +1,144 @@
+@inject EditorInterop Interop
+@using System.Runtime.InteropServices
+
+<section class="ps-timeline" aria-label="Таймлайн">
+  <div class="ps-timeline-controls">
+    <div class="ps-group">
+      <button class="ps-btn ps-icon-btn" title="Предыдущий кадр (@KeyMap.Hint(AppCommand.PreviousFrame))" data-testid="frame-prev"
+              @onclick="() => State.SelectFrame(State.CurrentFrameIndex - 1)"><Icon Name="prev" /></button>
+      <button class="ps-btn ps-play @(State.IsPlaying ? "is-active" : null)" data-testid="btn-play"
+              aria-pressed="@(State.IsPlaying ? "true" : "false")"
+              title="@(State.IsPlaying ? "Пауза" : "Воспроизвести") (@KeyMap.Hint(AppCommand.PlayPause))" @onclick="State.TogglePlayback">
+        <Icon Name="@(State.IsPlaying ? "pause" : "play")" /><span>@(State.IsPlaying ? "Пауза" : "Играть")</span>
+      </button>
+      <button class="ps-btn ps-icon-btn" title="Следующий кадр (@KeyMap.Hint(AppCommand.NextFrame))" data-testid="frame-next"
+              @onclick="() => State.SelectFrame(State.CurrentFrameIndex + 1)"><Icon Name="next" /></button>
+      <button class="ps-btn ps-toggle" aria-pressed="@(State.Document.Timeline.Loop ? "true" : "false")" data-testid="toggle-loop"
+              title="Зацикливание (сохраняется в проекте и экспортируется в JSON)" @onclick="() => State.SetLoop(!State.Document.Timeline.Loop)">
+        <Icon Name="loop" /><span>Цикл</span>
+      </button>
+      <label class="ps-field" title="Кадров в секунду: длительность кадров без собственного значения = 1000 / FPS">
+        <span>FPS</span>
+        <input type="number" class="ps-input ps-num" min="@DocumentLimits.MinFps" max="@DocumentLimits.MaxFps" value="@State.Document.Timeline.Fps"
+               data-testid="fps-input" @onchange="OnFpsChange" />
+      </label>
+    </div>
+
+    <div class="ps-group">
+      <button class="ps-btn ps-icon-btn" title="Новый пустой кадр после текущего" data-testid="frame-add" @onclick="State.AddFrame"><Icon Name="plus" /></button>
+      <button class="ps-btn ps-icon-btn" title="Дублировать кадр (независимая копия)" data-testid="frame-duplicate" @onclick="State.DuplicateFrame"><Icon Name="copy" /></button>
+      <button class="ps-btn ps-icon-btn" title="Удалить кадр" data-testid="frame-delete" disabled="@(State.Document.Frames.Count <= 1)" @onclick="State.DeleteFrame"><Icon Name="trash" /></button>
+      <button class="ps-btn ps-icon-btn" title="Сдвинуть кадр влево" data-testid="frame-move-left" disabled="@(State.CurrentFrameIndex == 0)" @onclick="() => State.MoveFrame(-1)"><Icon Name="left" /></button>
+      <button class="ps-btn ps-icon-btn" title="Сдвинуть кадр вправо" data-testid="frame-move-right"
+              disabled="@(State.CurrentFrameIndex >= State.Document.Frames.Count - 1)" @onclick="() => State.MoveFrame(1)"><Icon Name="right" /></button>
+      <label class="ps-field" title="Длительность текущего кадра в миллисекундах">
+        <span>Длит., мс</span>
+        <input type="number" class="ps-input ps-num" min="@DocumentLimits.MinFrameDurationMs" max="@DocumentLimits.MaxFrameDurationMs"
+               value="@State.Document.Timeline.GetDurationMs(State.CurrentFrame)" disabled="@(State.CurrentFrame.DurationMs is null)"
+               data-testid="duration-input" @onchange="OnDurationChange" />
+      </label>
+      <label class="ps-check" title="Отключите, чтобы задать кадру собственную длительность">
+        <input type="checkbox" checked="@(State.CurrentFrame.DurationMs is null)" data-testid="duration-default" @onchange="OnUseDefaultChange" />
+        по FPS
+      </label>
+    </div>
+
+    <div class="ps-group" title="Onion Skinning: соседние кадры под текущим (красный — предыдущий, синий — следующий)">
+      <label class="ps-check">
+        <input type="checkbox" checked="@State.Onion.Enabled" data-testid="toggle-onion" @onchange="e => State.SetOnionEnabled((bool)e.Value!)" />
+        <Icon Name="onion" /> Onion (@KeyMap.Hint(AppCommand.ToggleOnionSkin))
+      </label>
+      <label class="ps-check ps-onion-prev"><input type="checkbox" checked="@State.Onion.ShowPrevious" disabled="@(!State.Onion.Enabled)"
+               @onchange="e => State.SetOnionNeighbours((bool)e.Value!, State.Onion.ShowNext)" />пред.</label>
+      <label class="ps-check ps-onion-next"><input type="checkbox" checked="@State.Onion.ShowNext" disabled="@(!State.Onion.Enabled)"
+               @onchange="e => State.SetOnionNeighbours(State.Onion.ShowPrevious, (bool)e.Value!)" />след.</label>
+      <input type="range" min="5" max="100" value="@State.Onion.Opacity" disabled="@(!State.Onion.Enabled)" title="Прозрачность соседних кадров"
+             data-testid="onion-opacity" @oninput="OnOnionOpacity" />
+      <output>@(State.Onion.Opacity)%</output>
+    </div>
+  </div>
+
+  <ol class="ps-frames" aria-label="Кадры" data-testid="frame-list">
+    @for (int i = 0; i < State.Document.Frames.Count; i++)
+    {
+      int index = i;
+      var frame = State.Document.Frames[i];
+      var selected = index == State.CurrentFrameIndex;
+      <li @key="frame.Id">
+        <button class="ps-frame @(selected ? "is-active" : null)" aria-current="@(selected ? "true" : null)"
+                data-testid="frame-thumb" data-frame-id="@frame.Id"
+                title="Кадр @(index + 1): @State.Document.Timeline.GetDurationMs(frame) мс@(frame.DurationMs is null ? " (по FPS)" : string.Empty)"
+                @onclick="() => State.SelectFrame(index)">
+          <span class="ps-thumb ps-checker"><canvas id="thumb-@frame.Id" width="@State.Document.Width" height="@State.Document.Height"></canvas></span>
+          <span class="ps-frame-label">@(index + 1)<small>@State.Document.Timeline.GetDurationMs(frame) мс</small></span>
+        </button>
+      </li>
+    }
+  </ol>
+</section>
+
+@code {
+    [Parameter, EditorRequired] public EditorState State { get; set; } = default!;
+
+    private readonly Dictionary<int, long> _drawn = [];
+    private byte[] _buffer = [];
+    private SpriteDocument? _lastDocument;
+
+    private void OnFpsChange(ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value as string, out var fps))
+        {
+            State.SetFps(fps);
+        }
+    }
+
+    private void OnDurationChange(ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value as string, out var ms))
+        {
+            State.SetFrameDuration(Math.Clamp(ms, DocumentLimits.MinFrameDurationMs, DocumentLimits.MaxFrameDurationMs));
+        }
+    }
+
+    private void OnUseDefaultChange(ChangeEventArgs e) =>
+        State.SetFrameDuration((bool)e.Value! ? null : State.Document.Timeline.DefaultFrameDurationMs);
+
+    private void OnOnionOpacity(ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value as string, out var value))
+        {
+            State.SetOnionOpacity(value);
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        var doc = State.Document;
+        if (!ReferenceEquals(doc, _lastDocument))
+        {
+            _drawn.Clear();
+            _lastDocument = doc;
+        }
+
+        IJSObjectReference? module = null;
+        foreach (var frame in doc.Frames)
+        {
+            long revision = State.GetFrameRevision(frame.Id);
+            if (_drawn.TryGetValue(frame.Id, out var drawn) && drawn == revision)
+            {
+                continue;
+            }
+
+            module ??= await Interop.GetModuleAsync();
+            int byteCount = doc.Width * doc.Height * 4;
+            if (_buffer.Length != byteCount)
+            {
+                _buffer = new byte[byteCount];
+            }
+
+            Compositor.CompositeFrame(doc, frame, MemoryMarshal.Cast<byte, Color32>(_buffer.AsSpan()));
+            await module.InvokeVoidAsync("drawThumbnail", $"thumb-{frame.Id}", _buffer, doc.Width, doc.Height);
+            _drawn[frame.Id] = revision;
+        }
+    }
+}

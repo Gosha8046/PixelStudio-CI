@@ -1,0 +1,13 @@
+{
+  "name": "pixelstudio-e2e",
+  "private": true,
+  "description": "Browser end-to-end test of the published PixelStudio CI WebAssembly app.",
+  "type": "module",
+  "scripts": {
+    "test": "node run-e2e.mjs ../../publish/web/wwwroot --out output",
+    "serve": "node static-server.mjs ../../publish/web/wwwroot"
+  },
+  "devDependencies": {
+    "playwright": "1.63.0"
+  }
+}

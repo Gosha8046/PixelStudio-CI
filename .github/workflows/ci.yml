@@ -1,0 +1,119 @@
+# Pull requests: build everything, run unit tests, publish the web app and run the
+# browser end-to-end scenario, and build the Windows host on a real Windows runner.
+name: CI
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+  DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
+
+jobs:
+  build-test:
+    name: Build, unit tests, web publish (Linux)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Restore
+        run: dotnet restore PixelStudio.slnx
+
+      # Builds every project, including the Windows host (EnableWindowsTargeting=true).
+      - name: Build
+        run: dotnet build PixelStudio.slnx -c Release --no-restore
+
+      - name: Unit tests
+        run: >
+          dotnet test tests/PixelStudio.Tests -c Release --no-build
+          --logger "trx;LogFileName=unit-tests.trx" --results-directory TestResults
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: unit-test-results
+          path: TestResults
+          if-no-files-found: warn
+
+      - name: Publish web (WebAssembly)
+        run: dotnet publish src/PixelStudio.Web -c Release -o publish/web
+
+      - name: Upload web build
+        uses: actions/upload-artifact@v6
+        with:
+          name: web-build
+          path: publish/web/wwwroot
+          if-no-files-found: error
+
+  e2e:
+    name: Browser E2E (Chromium)
+    needs: build-test
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: tests/e2e
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/download-artifact@v7
+        with:
+          name: web-build
+          path: publish/web/wwwroot
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: tests/e2e/package-lock.json
+
+      - name: Install Playwright
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
+
+      - name: Run end-to-end scenario
+        run: node run-e2e.mjs "$GITHUB_WORKSPACE/publish/web/wwwroot" --out output --perf
+
+      - name: Validate exported JSON against the published schema
+        run: pipx run check-jsonschema --schemafile ../../docs/spritesheet.schema.json output/hero.json
+
+      - name: Upload E2E artifacts (screenshots, exported files)
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: e2e-output
+          path: tests/e2e/output
+          if-no-files-found: warn
+
+  windows:
+    name: Windows build and unit tests
+    runs-on: windows-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Build Windows host
+        run: dotnet build src/PixelStudio.Windows -c Release
+
+      - name: Unit tests on Windows
+        run: dotnet test tests/PixelStudio.Tests -c Release

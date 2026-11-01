@@ -1,0 +1,97 @@
+# main branch: build the browser version and publish it to GitHub Pages.
+# One-time setup: Settings → Pages → Build and deployment → Source: "GitHub Actions".
+name: Deploy web to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write      # deploy to Pages
+  id-token: write   # OIDC token required by actions/deploy-pages
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+env:
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Unit tests
+        run: dotnet test tests/PixelStudio.Tests -c Release
+
+      # Provides the site's base path: "/<repository>" for project sites, "" for a custom domain.
+      - name: Configure Pages
+        id: pages
+        uses: actions/configure-pages@v6
+
+      # AOT-compiles the .NET code to WebAssembly: ~5-7x faster pixel loops than the
+      # interpreter, at the cost of a larger download and a longer build (see README).
+      - name: Install wasm-tools workload (WebAssembly AOT)
+        run: dotnet workload install wasm-tools
+
+      - name: Publish web (WebAssembly, AOT)
+        run: dotnet publish src/PixelStudio.Web -c Release -p:RunAOTCompilation=true -o publish/web
+
+      - name: Set <base href> for the Pages path
+        env:
+          BASE_PATH: ${{ steps.pages.outputs.base_path }}
+        run: |
+          index=publish/web/wwwroot/index.html
+          sed -i "s|<base href=\"/\" />|<base href=\"${BASE_PATH}/\" />|" "$index"
+          grep -F "<base href=\"${BASE_PATH}/\" />" "$index"
+          # Pre-compressed copies are not used by Pages (and would keep the old base href).
+          find publish/web/wwwroot -type f \( -name '*.br' -o -name '*.gz' \) -delete
+
+      # Deploy only what passed: run the browser scenario against this exact build.
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: tests/e2e/package-lock.json
+
+      - name: End-to-end test of the build to be deployed
+        working-directory: tests/e2e
+        env:
+          BASE_PATH: ${{ steps.pages.outputs.base_path }}
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
+          node run-e2e.mjs "$GITHUB_WORKSPACE/publish/web/wwwroot" --out output --base "${BASE_PATH}/" --perf
+
+      - name: Upload E2E artifacts
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: e2e-output-pages
+          path: tests/e2e/output
+          if-no-files-found: warn
+
+      - uses: actions/upload-pages-artifact@v5
+        with:
+          path: publish/web/wwwroot
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v5

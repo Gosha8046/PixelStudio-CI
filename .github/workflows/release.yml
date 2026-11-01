@@ -1,0 +1,78 @@
+# Version tags (v1.2.3): build the Windows app and attach a ready-to-run ZIP to a GitHub Release.
+# The app is self-contained (no .NET install needed); the folder has the .exe plus the files it
+# needs next to it (runtime DLLs, WebView2 loader, wwwroot), so the whole folder is zipped.
+name: Release (Windows)
+
+on:
+  push:
+    tags: ['v*.*.*']
+
+permissions:
+  contents: write   # create the release and upload assets with GITHUB_TOKEN
+
+env:
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Read version from tag
+        shell: pwsh
+        run: |
+          $version = '${{ github.ref_name }}'.TrimStart('v')
+          "VERSION=$version" | Out-File -FilePath $env:GITHUB_ENV -Append
+
+      - name: Unit tests
+        run: dotnet test tests/PixelStudio.Tests -c Release
+
+      - name: Publish Windows app (win-x64, self-contained)
+        run: >
+          dotnet publish src/PixelStudio.Windows -c Release -r win-x64 --self-contained true
+          -p:Version=${{ env.VERSION }} -o artifacts/PixelStudio-CI-win-x64
+
+      - name: Publish web build (static site, for self-hosting)
+        run: dotnet publish src/PixelStudio.Web -c Release -p:Version=${{ env.VERSION }} -o artifacts/web
+
+      - name: Package ZIPs and checksums
+        shell: pwsh
+        run: |
+          $win = "artifacts/PixelStudio-CI-${{ env.VERSION }}-win-x64.zip"
+          $web = "artifacts/PixelStudio-CI-${{ env.VERSION }}-web.zip"
+          Copy-Item README.md, LICENSE, THIRD-PARTY-NOTICES.md artifacts/PixelStudio-CI-win-x64/
+          Compress-Archive -Path artifacts/PixelStudio-CI-win-x64/* -DestinationPath $win
+          Get-ChildItem artifacts/web/wwwroot -Recurse -Include *.br, *.gz | Remove-Item
+          Copy-Item LICENSE, THIRD-PARTY-NOTICES.md artifacts/web/wwwroot/
+          Compress-Archive -Path artifacts/web/wwwroot/* -DestinationPath $web
+          Get-FileHash $win, $web -Algorithm SHA256 |
+            ForEach-Object { "{0}  {1}" -f $_.Hash.ToLower(), (Split-Path $_.Path -Leaf) } |
+            Out-File artifacts/SHA256SUMS.txt -Encoding ascii
+
+      - name: Create or update GitHub Release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $tag = '${{ github.ref_name }}'
+          $files = @(
+            "artifacts/PixelStudio-CI-${{ env.VERSION }}-win-x64.zip",
+            "artifacts/PixelStudio-CI-${{ env.VERSION }}-web.zip",
+            "artifacts/SHA256SUMS.txt")
+          gh release view $tag *> $null
+          if ($LASTEXITCODE -eq 0) {
+            # Re-run of the workflow for an existing release: replace the assets.
+            gh release upload $tag @files --clobber
+          } else {
+            $ghArgs = @('release', 'create', $tag) + $files + @('--title', "PixelStudio CI $tag", '--generate-notes', '--verify-tag')
+            if ($tag.Contains('-')) { $ghArgs += '--prerelease' }  # e.g. v1.0.0-beta.1
+            gh @ghArgs
+          }
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }

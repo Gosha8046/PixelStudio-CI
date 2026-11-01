@@ -1,0 +1,69 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Gosha8046/PixelStudio-CI/docs/spritesheet.schema.json",
+  "title": "PixelStudio CI sprite sheet description (engine-neutral)",
+  "description": "Written next to the sprite sheet PNG. Frames are fixed-size cells laid out left-to-right, top-to-bottom in timeline order; no trimming, no rotation.",
+  "type": "object",
+  "required": ["format", "version", "image", "atlas", "frameSize", "layout", "frames", "playback"],
+  "properties": {
+    "format": { "const": "pixelstudio-spritesheet" },
+    "version": { "type": "integer", "const": 1 },
+    "generator": { "type": "string", "description": "Application and version that produced the file." },
+    "image": {
+      "type": "string",
+      "pattern": "^[^/\\\\]+\\.[Pp][Nn][Gg]$",
+      "description": "File name of the atlas PNG, relative to this JSON file."
+    },
+    "atlas": { "$ref": "#/$defs/size", "description": "Atlas size in pixels." },
+    "frameSize": { "$ref": "#/$defs/size", "description": "Size of every frame cell in pixels." },
+    "layout": {
+      "type": "object",
+      "required": ["columns", "rows", "spacing"],
+      "properties": {
+        "columns": { "type": "integer", "minimum": 1 },
+        "rows": { "type": "integer", "minimum": 1 },
+        "spacing": { "type": "integer", "minimum": 0, "maximum": 64, "description": "Transparent pixels between neighbouring cells; no outer margin." }
+      },
+      "additionalProperties": false
+    },
+    "frames": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["index", "x", "y", "width", "height", "durationMs"],
+        "properties": {
+          "index": { "type": "integer", "minimum": 0, "description": "Position in the timeline (0-based)." },
+          "x": { "type": "integer", "minimum": 0, "description": "Left edge in the atlas, pixels." },
+          "y": { "type": "integer", "minimum": 0, "description": "Top edge in the atlas, pixels (y grows downwards)." },
+          "width": { "type": "integer", "minimum": 1 },
+          "height": { "type": "integer", "minimum": 1 },
+          "durationMs": { "type": "integer", "minimum": 1, "maximum": 60000 }
+        },
+        "additionalProperties": false
+      }
+    },
+    "playback": {
+      "type": "object",
+      "required": ["order", "loop", "totalDurationMs"],
+      "properties": {
+        "order": { "type": "array", "items": { "type": "integer", "minimum": 0 }, "description": "Frame indices in playback order." },
+        "loop": { "type": "boolean" },
+        "totalDurationMs": { "type": "integer", "minimum": 1 }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "size": {
+      "type": "object",
+      "required": ["width", "height"],
+      "properties": {
+        "width": { "type": "integer", "minimum": 1 },
+        "height": { "type": "integer", "minimum": 1 }
+      },
+      "additionalProperties": false
+    }
+  }
+}

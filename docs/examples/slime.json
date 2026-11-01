@@ -1,0 +1,63 @@
+{
+  "format": "pixelstudio-spritesheet",
+  "version": 1,
+  "generator": "PixelStudio CI 0.1.0",
+  "image": "slime.png",
+  "atlas": {
+    "width": 34,
+    "height": 34
+  },
+  "frameSize": {
+    "width": 16,
+    "height": 16
+  },
+  "layout": {
+    "columns": 2,
+    "rows": 2,
+    "spacing": 2
+  },
+  "frames": [
+    {
+      "index": 0,
+      "x": 0,
+      "y": 0,
+      "width": 16,
+      "height": 16,
+      "durationMs": 125
+    },
+    {
+      "index": 1,
+      "x": 18,
+      "y": 0,
+      "width": 16,
+      "height": 16,
+      "durationMs": 125
+    },
+    {
+      "index": 2,
+      "x": 0,
+      "y": 18,
+      "width": 16,
+      "height": 16,
+      "durationMs": 125
+    },
+    {
+      "index": 3,
+      "x": 18,
+      "y": 18,
+      "width": 16,
+      "height": 16,
+      "durationMs": 250
+    }
+  ],
+  "playback": {
+    "order": [
+      0,
+      1,
+      2,
+      3
+    ],
+    "loop": true,
+    "totalDurationMs": 625
+  }
+}

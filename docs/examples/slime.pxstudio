@@ -1,0 +1,109 @@
+{
+  "format": "PixelStudioProject",
+  "formatVersion": 1,
+  "generator": "PixelStudio CI 0.1.0",
+  "width": 16,
+  "height": 16,
+  "fps": 8,
+  "loop": true,
+  "palette": [
+    "#1A1C2CFF",
+    "#5D275DFF",
+    "#B13E53FF",
+    "#EF7D57FF",
+    "#FFCD75FF",
+    "#A7F070FF",
+    "#38B764FF",
+    "#257179FF",
+    "#29366FFF",
+    "#3B5DC9FF",
+    "#41A6F6FF",
+    "#73EFF7FF",
+    "#F4F4F4FF",
+    "#94B0C2FF",
+    "#566C86FF",
+    "#333C57FF"
+  ],
+  "layers": [
+    {
+      "id": 1,
+      "name": "Слой 1",
+      "visible": true,
+      "opacity": 100,
+      "blendMode": "Normal"
+    },
+    {
+      "id": 3,
+      "name": "Тень",
+      "visible": true,
+      "opacity": 60,
+      "blendMode": "Multiply"
+    }
+  ],
+  "frames": [
+    {
+      "id": 2,
+      "durationMs": null,
+      "cels": [
+        {
+          "layerId": 1,
+          "encoding": "rgba8-zlib-base64",
+          "data": "eJxjYBgFyOB9bfh/fJhe\u002BoHM/zjYQ8L9Q1X/SAMADEGs\u002Bw=="
+        },
+        {
+          "layerId": 3,
+          "encoding": "rgba8-zlib-base64",
+          "data": "eJxjYBgFo2D4gFj12P/48EC7jwCoIBJTDQAAoW4TsQ=="
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "durationMs": null,
+      "cels": [
+        {
+          "layerId": 1,
+          "encoding": "rgba8-zlib-base64",
+          "data": "eJxjYBgF1ATva8P/48P00g9k/sfBHhLuH6r6hxoAAMstrPs="
+        },
+        {
+          "layerId": 3,
+          "encoding": "rgba8-zlib-base64",
+          "data": "eJxjYBgFo2AUwECseux/fJgOTqgggKkKAIgiEsE="
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "durationMs": null,
+      "cels": [
+        {
+          "layerId": 1,
+          "encoding": "rgba8-zlib-base64",
+          "data": "eJxjYBgFyOB9bfh/fJhe\u002BoHM/zjYQ8L9Q1X/SAMADEGs\u002Bw=="
+        },
+        {
+          "layerId": 3,
+          "encoding": "rgba8-zlib-base64",
+          "data": "eJxjYBgFo2D4gFj12P/48EC7j0hQgQNTHQAA7z8R0Q=="
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "durationMs": 250,
+      "cels": [
+        {
+          "layerId": 1,
+          "encoding": "rgba8-zlib-base64",
+          "data": "eJxjYBgF1ATva8P/48P00g9k/sfBHhLuH6r6hxoAAMstrPs="
+        },
+        {
+          "layerId": 3,
+          "encoding": "rgba8-zlib-base64",
+          "data": "eJxjYBgFo2AUwECseux/fJiOTqlAwzQBANXzEOE="
+        }
+      ]
+    }
+  ]
+}

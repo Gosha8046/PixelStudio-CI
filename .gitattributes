@@ -1,0 +1,5 @@
+* text=auto eol=lf
+*.png binary
+*.ico binary
+*.pxstudio text eol=lf
+*.cmd text eol=crlf

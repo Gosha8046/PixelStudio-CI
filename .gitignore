@@ -1,0 +1,13 @@
+bin/
+obj/
+artifacts/
+publish/
+*.user
+*.suo
+.vs/
+.idea/
+.vscode/
+TestResults/
+node_modules/
+tests/e2e/output/
+*.binlog

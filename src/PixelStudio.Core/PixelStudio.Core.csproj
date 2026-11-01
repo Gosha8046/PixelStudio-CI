@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Platform-independent document model and algorithms.
+    No UI, no rendering backend, no file-system access: everything here runs
+    unchanged on .NET for Windows and on .NET WebAssembly in the browser.
+  -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>PixelStudio.Core</RootNamespace>
+    <IsTrimmable>true</IsTrimmable>
+    <IsAotCompatible>true</IsAotCompatible>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="PixelStudio.Tests" />
+  </ItemGroup>
+
+</Project>

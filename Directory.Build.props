@@ -1,0 +1,14 @@
+<Project>
+  <PropertyGroup>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <Version>0.1.0</Version>
+    <Authors>Gosha8046</Authors>
+    <Product>PixelStudio CI</Product>
+    <Copyright>Copyright (c) 2026 Gosha8046</Copyright>
+    <!-- Deterministic builds make CI artifacts reproducible. -->
+    <Deterministic>true</Deterministic>
+  </PropertyGroup>
+</Project>

@@ -1,0 +1,14 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/PixelStudio.Core/PixelStudio.Core.csproj" />
+    <Project Path="src/PixelStudio.UI/PixelStudio.UI.csproj" />
+    <Project Path="src/PixelStudio.Web/PixelStudio.Web.csproj" />
+    <Project Path="src/PixelStudio.Windows/PixelStudio.Windows.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/PixelStudio.Tests/PixelStudio.Tests.csproj" />
+  </Folder>
+  <Folder Name="/tools/">
+    <Project Path="tools/PixelStudio.Bench/PixelStudio.Bench.csproj" />
+  </Folder>
+</Solution>

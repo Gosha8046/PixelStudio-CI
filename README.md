@@ -41,7 +41,7 @@ The codebase follows a strict modular structure, ensuring high performance for r
 ### Clone & Launch
 ```bash
 # Clone the repository
-git clone https://github.com
+git clone https://github.com/Gosha8046/PixelStudio-CI/
 
 # Navigate to the project directory
 cd PixelStudio-CI
